@@ -1,8 +1,6 @@
 title: Drone Bench Platform
 description: Educational Bench for Angular Aero Control of Multirotors
 
-theme: minima
-
 header_pages:
   - assembly.md
   - electronics.md

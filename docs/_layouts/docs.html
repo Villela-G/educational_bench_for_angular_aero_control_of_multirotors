@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ page.title }}</title>
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+</head>
+
+<body>
+
+<header>
+  <div class="nav-container">
+    
+    <div class="logo">
+      <a href="https://www.lacar.ufscar.br/pt-br" target="_blank" rel="noopener noreferrer">
+        <img src="{{ '/assets/images/lacar_site.png' | relative_url }}" alt="LACAR Lab">
+      </a>
+    </div>
+
+    <nav>
+      <a href="{{ '/index.html' | relative_url }}">Home</a>
+      <a href="{{ '/documentation.html' | relative_url }}">Documentation</a>
+      <a href="https://github.com/Villela-G/educational_bench_for_angular_aero_control_of_multirotors/tree/main" target="_blank" rel="noopener noreferrer">Code</a>
+    </nav>
+
+  </div>
+</header>
+
+<div class="banner"></div>
+
+<div class="layout">
+
+  <!-- Sidebar só aqui -->
+  <aside class="sidebar">
+    <h3>Documentation</h3>
+    <a href="{{ '/hardware.html' | relative_url }}">Hardware</a>
+    <a href="{{ '/electronics.html' | relative_url }}">Electronics</a>
+    <a href="{{ '/bom.html' | relative_url }}">BOM</a>
+    <a href="{{ '/assembly.html' | relative_url }}">Assembly</a>
+  </aside>
+
+  <main class="content">
+    {{ content }}
+  </main>
+
+</div>
+
+</body>
+</html>
