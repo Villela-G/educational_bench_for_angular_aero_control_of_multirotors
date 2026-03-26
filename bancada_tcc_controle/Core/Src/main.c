@@ -36,9 +36,9 @@
 #define MOTOR_HOVER_CONDITION 1000//250
 #define MOTOR_MAX_CONTROL 1800
 
-#define KP 1.50f
-#define KI 0.0001f
-#define KD 0.03f
+#define KP 1.0099f
+#define KI 0.00000f
+#define KD 0.0f
 
 #define IERR_MAX 1000.0f
 #define IERR_MIN -1000.0f
@@ -206,7 +206,7 @@ int main(void)
 //  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
   HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
   /* DEFINA AQUI AS PARTES DO CONTROLADOR - COMEÇO 1*/
-  float angle, err, control, dErr = 0, Ierr=0, prevErr=0, prevEnc4=0;
+  float angle, err, control, dErr = 0, Ierr=0, prevErr=0, prevEnc4=0, rpm=0;
   int32_t u_action;
   uint32_t md, me, sens_counter=0;
   uint32_t counter = 0;
@@ -221,12 +221,12 @@ int main(void)
 	  {
 	      dataready = 0;
 
-		  // =============================================
-	      // Open Loop
-	      // =============================================
-		  PWM_setCombinedValue(&thim2, MOTOR_HOVER_CONDITION, MOTOR_HOVER_CONDITION);
-		  sprintf(text, "bits=%6d\r\n", angle_in_bits);
-	      HAL_UART_Transmit(&huart2, (uint8_t*)text, 13, 50);
+//		  // =============================================
+//	      // Open Loop
+//	      // =============================================
+//		  PWM_setCombinedValue(&thim2, MOTOR_HOVER_CONDITION, MOTOR_HOVER_CONDITION);
+//		  sprintf(text, "bits=%6d\r\n", angle_in_bits);
+//	      HAL_UART_Transmit(&huart2, (uint8_t*)text, 13, 50);
 
 		  // =============================================
 		  // Control Loop

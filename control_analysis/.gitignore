@@ -1,0 +1,24 @@
+# MATLAB
+*.asv
+*.autosave
+*.mex*
+*.mexa64
+
+# Simulink
+slprj/
+*_ert_rtw/
+*_grt_rtw/
+
+# VSCode
+.vscode/
+
+# Results
+Results/
+Results_Decoupled/
+Results_Validated/
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.svg
