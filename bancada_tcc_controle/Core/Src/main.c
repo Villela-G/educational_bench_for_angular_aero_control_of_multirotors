@@ -51,6 +51,13 @@
 #define angle_inclination  18.15405//2.138189f
 #define angle_bias 27.8726//5431.43f
 
+#define STEP_LEFT_PWM 0
+#define STEP_RIGHT_PWM_START 200U
+#define STEP_RIGHT_PWM_INCREMENT 200U
+#define STEP_RIGHT_PWM_LAST 1800U
+#define STEP_SAMPLE_COUNT 1000U
+#define STEP_COUNT (((STEP_RIGHT_PWM_LAST - STEP_RIGHT_PWM_START) / STEP_RIGHT_PWM_INCREMENT) + 1U)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -69,7 +76,7 @@ UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
-uint8_t flag_user = 0;
+volatile uint8_t flag_user = 0;
 uint8_t pData[2];
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
@@ -97,14 +104,15 @@ void wait_user()
 	flag_user = 0;
 }
 
-uint8_t dataready = 0;
-uint32_t angle_in_bits = 0;
+volatile uint8_t dataready = 0;
+volatile uint32_t angle_in_bits = 0;
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
-    // Read & Update The ADC Result
-	//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	angle_in_bits = HAL_ADC_GetValue(hadc);
-	dataready=1;
+    if(hadc->Instance == ADC1)
+    {
+        angle_in_bits = HAL_ADC_GetValue(hadc);
+        dataready = 1U;
+    }
 }
 
 uint32_t clip(int16_t action, uint16_t min, uint16_t max)
@@ -209,7 +217,11 @@ int main(void)
   float angle, err, control, dErr = 0, Ierr=0, prevErr=0, prevEnc4=0, rpm=0;
   int32_t u_action;
   uint32_t md, me, sens_counter=0;
-  uint32_t counter = 0;
+  uint32_t angle_bits_sample = 0;
+  uint32_t current_step = 0;
+  uint32_t step_idx = 0;
+  uint16_t step_right_pwm = 0;
+  uint8_t step_active = 0;
   char text[100];
   int msg_len;
   /* DEFINA AQUI AS PARTES DO CONTROLADOR - FIM 1 */
@@ -220,14 +232,10 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  if(dataready)
 	  {
-	      dataready = 0;
-
-//		  // =============================================
-//	      // Open Loop
-//	      // =============================================
-//		  PWM_setCombinedValue(&thim2, MOTOR_HOVER_CONDITION, MOTOR_HOVER_CONDITION);
-//		  sprintf(text, "bits=%6d\r\n", angle_in_bits);
-//	      HAL_UART_Transmit(&huart2, (uint8_t*)text, 13, 50);
+	      __disable_irq();
+	      angle_bits_sample = angle_in_bits;
+	      dataready = 0U;
+	      __enable_irq();
 
 		  // =============================================
 		  // Control Loop
@@ -235,7 +243,7 @@ int main(void)
 	      sens_counter++;
 
 	      /* --- Angle conversion --- */
-	      float voltage = (angle_in_bits * 3.3f) / 4095.0f;
+	      float voltage = (angle_bits_sample * 3.3f) / 4095.0f;
 	      angle = voltage * angle_inclination - angle_bias;
 
 	      /* --- Error --- */
@@ -267,16 +275,24 @@ int main(void)
 	      me = clip(me, MOTOR_IDLE_CONDITION, MOTOR_MAX_CONTROL);
 
 
-	      if(sens_counter < 4000)
+	      step_active = 0U;
+	      current_step = 0U;
+	      step_right_pwm = 0U;
+	      for(step_idx = 0U; step_idx < STEP_COUNT; step_idx++)
 	      {
-	          PWM_setCombinedValue(&htim2, me, md);
+	          if(sens_counter <= ((step_idx + 1U) * STEP_SAMPLE_COUNT))
+	          {
+	              current_step = step_idx + 1U;
+	              step_right_pwm = (uint16_t)(STEP_RIGHT_PWM_START + (step_idx * STEP_RIGHT_PWM_INCREMENT));
+	              step_active = 1U;
+	              break;
+	          }
+	      }
 
+	      if(step_active)
+	      {
+	          PWM_setCombinedValue(&htim2, STEP_LEFT_PWM, step_right_pwm);
 	          HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
-	          msg_len = snprintf(text, sizeof(text), "a=%4lu, u_e=%4lu, u_d=%4lu\r\n",
-	                  (unsigned long)angle_in_bits, (unsigned long)me, (unsigned long)md);
-	          HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 15);
-
 	      }
 	      else
 	      {
@@ -295,12 +311,12 @@ int main(void)
 	      rpm = (enc4 - prevEnc4)* 100 / 28 * 60; // \deltaEnc/(picos * \delta t) * (60 sec/min)
 	      prevEnc4 = enc4;
 
-	      msg_len = snprintf(text, sizeof(text), "angle=%7d deg, err=%7d deg\r\n", (long)angle, (long)err);
-	      HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
-	      msg_len = snprintf(text, sizeof(text), "enc4=%6d\r\n", enc4);
-	      HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
-	      msg_len = snprintf(text, sizeof(text), "rpm=%ld\r\n", (long)rpm);
-	      HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
+	      if(step_active)
+	      {
+	          msg_len = snprintf(text, sizeof(text), "step=%lu,bits=%lu,rpm=%ld\r\n",
+	                  (unsigned long)current_step, (unsigned long)angle_bits_sample, (long)rpm);
+	          HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
+	      }
 	  }
 
 
