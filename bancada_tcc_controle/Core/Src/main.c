@@ -36,9 +36,9 @@
 #define MOTOR_HOVER_CONDITION 1000//250
 #define MOTOR_MAX_CONTROL 1800
 
-#define KP 1.0099f
-#define KI 0.00000f
-#define KD 0.0f
+#define KP 1.50f
+#define KI 0.001f
+#define KD 0.03f
 
 #define IERR_MAX 1000.0f
 #define IERR_MIN -1000.0f
@@ -48,8 +48,8 @@
 //#define angle_inclination 0.619770239f
 //#define angle_bias 1.187841465f
 
-#define angle_inclination 21//2.138189f
-#define angle_bias 38//5431.43f
+#define angle_inclination  18.15405//2.138189f
+#define angle_bias 27.8726//5431.43f
 
 /* USER CODE END PD */
 
@@ -211,6 +211,7 @@ int main(void)
   uint32_t md, me, sens_counter=0;
   uint32_t counter = 0;
   char text[100];
+  int msg_len;
   /* DEFINA AQUI AS PARTES DO CONTROLADOR - FIM 1 */
   while (1)
   {
@@ -272,8 +273,10 @@ int main(void)
 
 	          HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
-	          sprintf(text,"a=%4ld, u_e=%4ld, u_d=%4ld\r\n", angle_in_bits, me, md);
-	          HAL_UART_Transmit(&huart2, (uint8_t*)text, 28, 15);
+	          msg_len = snprintf(text, sizeof(text), "a=%4lu, u_e=%4lu, u_d=%4lu\r\n",
+	                  (unsigned long)angle_in_bits, (unsigned long)me, (unsigned long)md);
+	          HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 15);
+
 	      }
 	      else
 	      {
@@ -285,11 +288,19 @@ int main(void)
 		  // =============================================
 //	      int16_t enc3 = __HAL_TIM_GET_COUNTER(&htim3);
 	      int16_t enc4 = __HAL_TIM_GET_COUNTER(&htim4);
+          if(abs(enc4) > 32000) // overflow
+          {
+            enc4=0;
+          } 
 	      rpm = (enc4 - prevEnc4)* 100 / 28 * 60; // \deltaEnc/(picos * \delta t) * (60 sec/min)
 	      prevEnc4 = enc4;
 
-	      sprintf(text,"enc4=%6d\r\n", enc4);
-	      HAL_UART_Transmit(&huart2, (uint8_t*)text, 13, 50);
+	      msg_len = snprintf(text, sizeof(text), "angle=%7d deg, err=%7d deg\r\n", (long)angle, (long)err);
+	      HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
+	      msg_len = snprintf(text, sizeof(text), "enc4=%6d\r\n", enc4);
+	      HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
+	      msg_len = snprintf(text, sizeof(text), "rpm=%ld\r\n", (long)rpm);
+	      HAL_UART_Transmit(&huart2, (uint8_t*)text, (uint16_t)msg_len, 50);
 	  }
 
 
